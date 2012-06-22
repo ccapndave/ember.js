@@ -10,6 +10,7 @@ group :development do
   gem "rack"
   gem "rest-client"
   gem "github_api", "0.4.11"
-  gem "ember-docs", :git => "https://github.com/emberjs/docs-generator.git"
+  #gem "ember-docs", :git => "https://github.com/emberjs/docs-generator.git"
+  gem "ember-docs", :git => "git@github.com:ccapndave/docs-generator.git"
   gem "kicker"
 end

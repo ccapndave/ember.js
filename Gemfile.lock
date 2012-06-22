@@ -1,6 +1,6 @@
 GIT
-  remote: https://github.com/emberjs/docs-generator.git
-  revision: cfbc2a3aabc08de305224b290ad8f37f3ef5f847
+  remote: git@github.com:ccapndave/docs-generator.git
+  revision: 9e87bd38a0f6ac7c58b97c22ae5f0900bcedf486
   specs:
     ember-docs (0.1)
       rack
@@ -54,6 +54,7 @@ GEM
     multi_json (1.3.6)
     multipart-post (1.1.5)
     nokogiri (1.5.3)
+    nokogiri (1.5.3-x86-mingw32)
     oauth2 (0.5.2)
       faraday (~> 0.7)
       multi_json (~> 1.0)
@@ -66,6 +67,7 @@ GEM
 
 PLATFORMS
   ruby
+  x86-mingw32
 
 DEPENDENCIES
   colored
