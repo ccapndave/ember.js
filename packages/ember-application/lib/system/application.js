@@ -83,7 +83,7 @@ Ember.Application = Ember.Namespace.extend(
 
   /**
     Instantiate all controllers currently available on the namespace
-    and inject them onto a state manager.
+    and inject them onto a router.
 
     Example:
 
@@ -112,22 +112,22 @@ Ember.Application = Ember.Namespace.extend(
     }
 
     if (router) {
-      set(this, 'stateManager', router);
-    }
+      set(this, 'router', router);
 
-    // By default, the router's namespace is the current application.
-    //
-    // This allows it to find model classes when a state has a
-    // route like `/posts/:post_id`. In that case, it would first
-    // convert `post_id` into `Post`, and then look it up on its
-    // namespace.
-    set(router, 'namespace', this);
+      // By default, the router's namespace is the current application.
+      //
+      // This allows it to find model classes when a state has a
+      // route like `/posts/:post_id`. In that case, it would first
+      // convert `post_id` into `Post`, and then look it up on its
+      // namespace.
+      set(router, 'namespace', this);
+    }
 
     Ember.runLoadHooks('application', this);
 
-    properties.forEach(function(property) {
-      injections.forEach(function(injection) {
-        injection(namespace, router, property);
+    injections.forEach(function(injection) {
+      properties.forEach(function(property) {
+        injection[1](namespace, router, property);
       });
     });
 
@@ -149,20 +149,13 @@ Ember.Application = Ember.Namespace.extend(
   /**
     @private
 
-    If the application has a state manager, use it to route
-    to the current URL, and trigger a new call to `route`
-    whenever the URL changes.
+    If the application has a router, use it to route to the current URL, and
+    trigger a new call to `route` whenever the URL changes.
   */
-  startRouting: function(stateManager) {
-    var location = get(stateManager, 'location'),
+  startRouting: function(router) {
+    var location = get(router, 'location'),
         rootElement = get(this, 'rootElement'),
-        applicationController = get(stateManager, 'applicationController');
-
-    if (typeof location === 'string') {
-      location = Ember.Location.create({implementation: location});
-      set(stateManager, 'location', location);
-      this._createdLocation = location;
-    }
+        applicationController = get(router, 'applicationController');
 
     if (this.ApplicationView && applicationController) {
       var applicationView = this.ApplicationView.create({
@@ -173,9 +166,9 @@ Ember.Application = Ember.Namespace.extend(
       applicationView.appendTo(rootElement);
     }
 
-    stateManager.route(location.getURL());
+    router.route(location.getURL());
     location.onUpdateURL(function(url) {
-      stateManager.route(url);
+      router.route(url);
     });
   },
 
@@ -189,31 +182,51 @@ Ember.Application = Ember.Namespace.extend(
   willDestroy: function() {
     get(this, 'eventDispatcher').destroy();
     if (this._createdRouter)          { this._createdRouter.destroy(); }
-    if (this._createdLocation)        { this._createdLocation.destroy(); }
     if (this._createdApplicationView) { this._createdApplicationView.destroy(); }
   },
 
-  registerInjection: function(callback) {
-    this.constructor.registerInjection(callback);
+  registerInjection: function(options) {
+    this.constructor.registerInjection(options);
   }
 });
 
 Ember.Application.reopenClass({
   concatenatedProperties: ['injections'],
   injections: Ember.A(),
-  registerInjection: function(callback) {
-    get(this, 'injections').pushObject(callback);
+  registerInjection: function(options) {
+    var injections = get(this, 'injections'),
+        before = options.before,
+        name = options.name,
+        injection = options.injection,
+        location;
+
+    if (before) {
+      location = injections.find(function(item) {
+        if (item[0] === before) { return true; }
+      });
+      location = injections.indexOf(location);
+    } else {
+      location = get(injections, 'length');
+    }
+
+    injections.splice(location, 0, [name, injection]);
   }
 });
 
-Ember.Application.registerInjection(function(app, router, property) {
-  if (!/^[A-Z].*Controller$/.test(property)) { return; }
+Ember.Application.registerInjection({
+  name: 'controllers',
+  injection: function(app, router, property) {
+    if (!/^[A-Z].*Controller$/.test(property)) { return; }
 
-  var name = property[0].toLowerCase() + property.substr(1),
-      controller = app[property].create();
+    var name = property[0].toLowerCase() + property.substr(1),
+        controller = app[property].create();
 
-  router.set(name, controller);
+    router.set(name, controller);
 
-  controller.set('target', router);
-  controller.set('controllers', router);
+    controller.setProperties({
+      target: router,
+      controllers: router,
+      namespace: app
+    });
+  }
 });

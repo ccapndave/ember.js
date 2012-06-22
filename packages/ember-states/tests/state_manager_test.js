@@ -105,44 +105,6 @@ test("it sends enter and exit events during state transitions", function() {
   equal(loadedState.exited, 1, "sibling state should receive one exit event");
 });
 
-test("a transition can be asynchronous", function() {
-  expect(1);
-
-  var counter = 0;
-  var stateManager = Ember.StateManager.create({
-    start: Ember.State.create({
-      finish: function(manager) {
-        manager.transitionTo('finished');
-      },
-
-      exit: function(manager, transition) {
-        // pause QUnit while we test some async functionality
-        stop();
-
-        transition.async();
-
-        setTimeout(function() {
-          counter++;
-          transition.resume();
-        }, 50);
-      }
-    }),
-
-    finished: Ember.State.create({
-      enter: function() {
-        equal(counter, 1, "increments counter and executes transition after specified timeout");
-        start();
-      },
-
-      exit: function() {
-        equal(arguments.length, 0, "does not pass transition object if arguments are empty");
-      }
-    })
-  });
-
-  stateManager.send('finish');
-});
-
 test("it accepts absolute paths when changing states", function() {
   var emptyState = loadedState.empty;
 
@@ -248,6 +210,34 @@ test("it automatically transitions to multiple substates specified using either 
   });
 
   ok(get(stateManager, 'currentState').isStart, "automatically transitions to final substate");
+});
+
+test("it triggers setup on initialSubstate", function() {
+  var parentSetup = false,
+      childSetup = false,
+      grandchildSetup = false;
+
+  stateManager = Ember.StateManager.create({
+    start: Ember.State.create({
+      setup: function() { parentSetup = true; },
+
+      initialState: 'childState',
+
+      childState: Ember.State.create({
+        setup: function() { childSetup = true; },
+
+        initialState: 'grandchildState',
+
+        grandchildState: Ember.State.create({
+          setup: function() { grandchildSetup = true; }
+        })
+      })
+    })
+  });
+
+  ok(parentSetup, "sets up parent");
+  ok(childSetup, "sets up child");
+  ok(grandchildSetup, "sets up grandchild");
 });
 
 test("it throws an assertion error when the initialState does not exist", function() {
